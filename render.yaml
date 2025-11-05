@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: Chat-WebSocket
-    env: python
-    region: singapore
-    buildCommand: ""
-    startCommand: python server_websocket.py
-    plan: free
