@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat WebSocket</title>
+  <link rel="icon" type="image/x-icon" href="https://cdn-icons-png.flaticon.com/512/1380/1380370.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(120deg, #2600ff, #acb6e5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LOGIN OVERLAY ===== */
+    .login-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .login-box {
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      width: 90%;
+      max-width: 350px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .login-box input {
+      width: 100%;
+      padding: 10px 15px;
+      border-radius: 25px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+    .login-box button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 25px;
+      background: #007bff;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .login-box button:hover {
+      background: #0056b3;
+    }
+
+    /* ===== CHAT UI ===== */
+    .chat-wrapper {
+      width: 90%;
+      max-width: 600px;
+      height: 80vh;
+      background: #fff;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+    .chat-header {
+      background: #007bff;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h1 { font-size: 1.2rem; }
+    .status { font-size: 0.9rem; opacity: 0.9; }
+
+    .chat-box {
+      flex: 1;
+      padding: 20px;
+      background: #f5f6fa;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      margin: 8px 0;
+      max-width: 75%;
+      animation: fadeInUp 0.3s forwards;
+    }
+    .msg.self { align-self: flex-end; text-align: right; }
+    .msg.client { align-self: flex-start; text-align: left; }
+    .msg.system { align-self: center; opacity: 0.6; text-align: center; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .bubble {
+      padding: 10px 15px;
+      border-radius: 18px;
+      font-size: 1rem;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .msg.self .bubble {
+      background: #007bff;
+      color: #fff;
+      border-bottom-right-radius: 5px;
+    }
+
+    .msg.client .bubble {
+      background: #e9ecef;
+      color: #333;
+      border-bottom-left-radius: 5px;
+    }
+
+    .msg.system .bubble { background: none; font-style: italic; }
+
+    .meta {
+      font-size: 0.8rem;
+      color: #888;
+      margin: 3px 0;
+    }
+
+    .chat-input-area {
+      display: flex;
+      padding: 15px;
+      background: #fff;
+      border-top: 1px solid #ddd;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 1px solid #ccc;
+      border-radius: 25px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .chat-input-area button {
+      background: #007bff;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      padding: 12px 18px;
+      border-radius: 50%;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .chat-input-area button:hover { background: #0056b3; }
+
+    .typing-status {
+      font-size: 0.9rem;
+      color: #f1f1f1;
+      opacity: 0.9;
+      margin-top: 4px;
+      animation: fadeInOut 1.5s infinite;
+    }
+    @keyframes fadeInOut { 0%,100%{opacity:0.5;} 50%{opacity:1;} }
+  </style>
+</head>
+<body>
+  <!-- Login -->
+  <div class="login-overlay" id="login-screen">
+    <div class="login-box">
+      <h2>Masukkan Nama Anda</h2>
+      <input type="text" id="username" placeholder="Nama panggilan..." />
+      <button id="start-chat">Mulai Chat</button>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-wrapper" id="chat-wrapper" style="display:none;">
+    <div class="chat-header">
+      <div>
+        <h1>💬 Chat WebSocket</h1>
+        <div id="typing-status" class="typing-status"></div>
+      </div>
+      <span class="status" id="status">Menghubungkan...</span>
+    </div>
+
+    <div id="chat-box" class="chat-box"></div>
+
+    <div class="chat-input-area">
+      <input type="text" id="message-input" placeholder="Ketik pesan..." autocomplete="off" />
+      <button id="send-btn">📨</button>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+    let username = "";
+    const chatBox = document.getElementById("chat-box");
+    const messageInput = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+    const statusEl = document.getElementById("status");
+    const typingStatus = document.getElementById("typing-status");
+
+    document.getElementById("start-chat").addEventListener("click", () => {
+      const inputName = document.getElementById("username").value.trim();
+      if (!inputName) return alert("Masukkan nama dulu!");
+      username = inputName;
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("chat-wrapper").style.display = "flex";
+      startChat();
+    });
+
+    function startChat() {
+      ws = new WebSocket("wss://localhost:5000");
+
+      ws.onopen = () => {
+        statusEl.textContent = "🟢 Terhubung";
+        addMessage("Anda masuk sebagai " + username, "system");
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = "🔴 Terputus";
+        addMessage("Koneksi terputus ❌", "system");
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "message") {
+          addMessage(data.name + ": " + data.text, "client");
+        } else if (data.type === "typing") {
+          typingStatus.textContent = "💬 " + data.name + " sedang mengetik...";
+        } else if (data.type === "stop_typing") {
+          typingStatus.textContent = "";
+        }
+      };
+
+      sendBtn.onclick = () => sendMessage();
+      messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMessage();
+        else sendTypingStatus();
+      });
+    }
+
+    function sendMessage() {
+      const msg = messageInput.value.trim();
+      if (msg) {
+        const payload = { type: "message", name: username, text: msg };
+        ws.send(JSON.stringify(payload));
+        addMessage("Anda: " + msg, "self");
+        messageInput.value = "";
+        ws.send(JSON.stringify({ type: "stop_typing" }));
+      }
+    }
+
+    function addMessage(text, type) {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("msg", type);
+
+      const bubble = document.createElement("div");
+      bubble.classList.add("bubble");
+      bubble.textContent = text;
+
+      const meta = document.createElement("div");
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      meta.classList.add("meta");
+      meta.textContent = time;
+
+      msgDiv.appendChild(bubble);
+      msgDiv.appendChild(meta);
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+    }
+
+    let typingTimeout;
+    function sendTypingStatus() {
+      ws.send(JSON.stringify({ type: "typing", name: username }));
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        ws.send(JSON.stringify({ type: "stop_typing", name: username }));
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
