@@ -1,17 +1,18 @@
-# 💬 Chat Dua Arah WebSocket (Python + HTML)
+# 💬 Chat WebSocket (Flask + WebSocket)
 
-Proyek ini adalah aplikasi **chat dua arah real-time** berbasis **WebSocket** menggunakan Python sebagai server dan HTML/JavaScript sebagai client.  
-Dapat digunakan untuk komunikasi antar perangkat dalam **satu jaringan Wi-Fi (LAN)** atau bahkan diakses secara publik menggunakan `ngrok` atau hosting seperti `Render.com`.
+Proyek ini adalah aplikasi **chat dua arah real-time** sederhana berbasis **Flask** dan **Flask-Sock (WebSocket).**
+Dapat digunakan untuk komunikasi antar perangkat dalam **satu jaringan Wi-Fi (LAN)** atau bahkan diakses secara publik.
 
 ---
 
 ## 🚀 Fitur
 
-- Komunikasi real-time dua arah antara beberapa client
+- Komunikasi real-time antar pengguna via WebSocket.
 - Notifikasi "user sedang mengetik..."
 - Pesan dari server (admin terminal)
 - Sistem identitas pengguna (nickname)
-- Dapat dijalankan di semua OS: **Windows, Linux, macOS**
+- Dapat dijalankan di semua OS: **Linux, Windows, macOS**
+- Tidak membutuhkan database.
 
 ---
 
@@ -55,7 +56,7 @@ pip install -r requirements.txt
 
 ---
 
-## ▶️ Menjalankan Server
+## 🚀 Menjalankan Server
 
 Jalankan perintah berikut di terminal:
 
@@ -66,50 +67,53 @@ python server_websocket.py
 Jika berhasil, akan muncul pesan seperti:
 
 ```bash
-[SERVER] Aktif di ws://localhost:5000
+[SERVER] Aktif di port 8080 (HTTPS otomatis)
 ```
 
 ---
 
-## 💻 Menjalankan Client (Browser)
+## 💻 Menjalankan Aplikasi
 
-1. Buka file `index.html` di browser.  
-2. Jika client berada di perangkat lain (satu jaringan Wi-Fi), ubah URL WebSocket di baris berikut pada `index.html`:
+Tergantung pada konfigurasi host di baris berikut pada server_websocket.py:
 
-```js
-const ws = new WebSocket("ws://192.168.xx.xx:5000");
+```bash
+app.run(host="0.0.0.0", port=8080, debug=False)
 ```
 
-Ganti `192.168.xx.xx` dengan alamat IP komputer yang menjalankan server (`ipconfig` atau `ifconfig`).
+| Mode | Host | Cara akses | Siapa yang bisa akses |
+|----------|----------|----------|----------|
+| 🔒 Hanya di komputer sendiri | 127.0.0.1 | http://127.0.0.1:8080 | Hanya komputer lokal |
+| 📶 Diakses lewat WiFi lokal | 192.168.x.x (IP lokal PC) | http://192.168.x.x:8080 | Semua perangkat di jaringan WiFi yang sama |
+| 🌍 Dapat diakses dari mana saja (tidak disarankan tanpa proteksi) | 0.0.0.0 | tergantung port forwarding router | Semua jaringan yang bisa menjangkau IP publik kamu |
 
 ---
 
-## 🌐 Akses Publik (Opsional)
+## 💡 Catatan:
+> 0.0.0.0 artinya server mendengarkan semua IP di komputer kamu.
+Aman untuk lokal, selama port 8080 tidak dibuka ke internet oleh router atau layanan seperti ngrok.
 
-Jika ingin diakses dari luar jaringan lokal, gunakan **ngrok** atau hosting seperti **Render.com**.
+---
 
-### 🔹 Dengan ngrok
+## 🌐 Mengakses dari HP / Perangkat Lain
 
-1. Unduh & instal [ngrok](https://ngrok.com/download)  
-2. Jalankan:
-
-```bash
-ngrok http 5000
-```
-
-3. Salin URL `wss://xxxx.ngrok-free.app` dan ubah pada `index.html`.
-
-### 🔹 Dengan Render.com
-
-1. Push project ini ke GitHub.  
-2. Buka [Render.com](https://render.com), login, dan pilih **"New Web Service"**.  
-3. Pilih repository ini dan set **Start Command** menjadi:
+1. Pastikan HP dan komputer server terhubung ke WiFi yang sama.  
+2. Cek IP komputer kamu:
+- Linux/Mac: jalankan ifconfig atau ip addr
+- Windows: jalankan ipconfig
+3. Lihat IP seperti 192.168.1.10
+4. Di HP, buka browser dan ketik:
 
 ```bash
-python server_websocket.py
+http://192.168.1.10:8080
 ```
 
-4. Deploy, dan gunakan URL `wss://...render.com` di `index.html`.
+---
+
+## 🛡️ Keamanan
+
+- Tidak ada autentikasi → jangan buka ke internet publik tanpa pengamanan.
+- Gunakan host="127.0.0.1" jika hanya untuk penggunaan pribadi.
+- Gunakan host="192.168.x.x" hanya di jaringan lokal terpercaya.
 
 ---
 

@@ -1,67 +1,62 @@
 import asyncio
-import websockets
 import datetime
 import json
+from flask import Flask, send_from_directory
+from flask_sock import Sock
+
+app = Flask(__name__, static_folder=".", static_url_path="")
+sock = Sock(app)
 
 connected_clients = set()
 
-async def chat_handler(websocket):
-    connected_clients.add(websocket)
-    print(f"[{datetime.datetime.now()}] Client baru terhubung. Total client: {len(connected_clients)}")
+@app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
+
+@sock.route("/ws")
+def chat(ws):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(handle_chat(ws))
+
+async def handle_chat(ws):
+    connected_clients.add(ws)
+    print(f"[{datetime.datetime.now()}] Client baru terhubung. Total: {len(connected_clients)}")
 
     try:
-        async for message in websocket:
+        while True:
+            message = ws.receive()
+            if message is None:
+                break
+
             data = json.loads(message)
+
             if data["type"] == "message":
                 name = data.get("name", "Anonim")
                 print(f"[{name}] {data['text']}")
-                for client in connected_clients:
-                    if client != websocket:
-                        await client.send(json.dumps({
+                for client in list(connected_clients):
+                    if client != ws:
+                        await asyncio.to_thread(client.send, json.dumps({
                             "type": "message",
                             "name": name,
                             "text": data["text"]
                         }))
-            elif data["type"] == "typing":
-                for client in connected_clients:
-                    if client != websocket:
-                        await client.send(json.dumps({
-                            "type": "typing",
-                            "name": data.get("name", "User")
-                        }))
-            elif data["type"] == "stop_typing":
-                for client in connected_clients:
-                    if client != websocket:
-                        await client.send(json.dumps({
-                            "type": "stop_typing",
+
+            elif data["type"] in ["typing", "stop_typing"]:
+                for client in list(connected_clients):
+                    if client != ws:
+                        await asyncio.to_thread(client.send, json.dumps({
+                            "type": data["type"],
                             "name": data.get("name", "User")
                         }))
 
-    except websockets.exceptions.ConnectionClosed:
-        print("[INFO] Client terputus.")
+    except Exception as e:
+        print("[ERROR]", e)
     finally:
-        connected_clients.remove(websocket)
+        connected_clients.remove(ws)
         print(f"[INFO] Client keluar. Tersisa {len(connected_clients)} client.")
 
 
-async def send_from_server():
-    while True:
-        msg = await asyncio.to_thread(input, "[Server] Ketik pesan: ")
-        if msg.strip():
-            for client in connected_clients:
-                try:
-                    await client.send(json.dumps({
-                        "type": "message",
-                        "name": "Server",
-                        "text": msg
-                    }))
-                except:
-                    pass
-
-async def main():
-    async with websockets.serve(chat_handler, "0.0.0.0", 5000):
-        print("[SERVER] Aktif di ws://localhost:5000")
-        await asyncio.gather(send_from_server(), asyncio.Future())
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("[SERVER] Aktif di port 8080 (HTTPS otomatis)")
+    app.run(host="0.0.0.0", port=8080, debug=False)

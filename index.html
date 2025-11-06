@@ -226,13 +226,17 @@
     });
 
     function startChat() {
-      ws = new WebSocket("wss://localhost:5000");
+      wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${wsProtocol}://${location.host}/ws`);
+
+
 
       ws.onopen = () => {
         statusEl.textContent = "🟢 Terhubung";
-        addMessage("Anda masuk sebagai " + username, "system");
+        addMessage(`Anda masuk sebagai ${username}`, "system");
+        // addMessage("Terhubung ke server ✅", "system");
       };
-
+  
       ws.onclose = () => {
         statusEl.textContent = "🔴 Terputus";
         addMessage("Koneksi terputus ❌", "system");
