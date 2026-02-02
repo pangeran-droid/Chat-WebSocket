@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Chat WebSocket Logo" width="120">
+<img src="https://cdn-icons-png.flaticon.com/512/1380/1380370.png" alt="Chat WebSocket Logo" width="120">
 
 # 💬 Chat WebSocket (Flask + WebSockets)
 
